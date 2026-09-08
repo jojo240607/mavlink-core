@@ -1,0 +1,20 @@
+[package]
+name = "mavlink-core"
+version = "0.1.0"
+edition = "2021"
+description = "MAVLink v2 共用编解码核心：no_std 帧层 + 全消息编解码（固件/仿真器/地面站共用）"
+license = "MIT OR Apache-2.0"
+
+# 设计目标：作为飞控固件(flyctrl-core)、仿真器(fly-simulater)、地面站(groundctrl)、
+# App(joc-app-rust) 的统一 MAVLink 实现，避免多处手搓造成协议分叉。
+# 纯 no_std、零运行时依赖，可在裸机 MCU 与 host 侧同时编译。
+
+[dependencies]
+# 刻意保持零依赖：全部字节编解码、位域均手写，保证 no_std 裸机可编译。
+
+[features]
+default = []
+# 地面站兼容层（与官方 `mavlink` crate 命名对齐的 `MavHeader`/`MavMessage`/`*_DATA`）。
+# 该层使用 alloc（Vec/String），仅 host 侧地面站/调试工具需要；
+# 固件/仿真器等 no_std 场景保持关闭，避免引入全局分配器依赖。
+common = []
