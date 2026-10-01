@@ -163,24 +163,24 @@ pub fn crc16_x25(mut crc: u16, bytes: &[u8]) -> u16 {
 //   判据 ✓：地址落在【调用方声明的栈竞技场 `[GUARD_LO, GUARD_HI)`】内、且 `< SP` ⇒ 必是死区 ✓
 //   （只按 `< SP` 判会**误伤静态/`.bss` 缓冲** ✗ —— 它们天生在栈下方 ✓；故需显式竞技场范围 ✓）
 //   行为 ✓：**拒绝写入**（返回 0 ✓）—— 帧缺失远好于踩碎返回地址 ✓；并记录粘性证据 ✓。
-#[cfg(target_arch = "arm")]
+#[cfg(all(target_arch = "arm", feature = "buf-guard"))]
 #[used]
 pub static mut GUARD_LO: usize = 0;
 /// 栈竞技场上界（不含）；`LO == HI == 0` ⇒ 关闭守卫 ✓（host 侧无需设置 ✓）
-#[cfg(target_arch = "arm")]
+#[cfg(all(target_arch = "arm", feature = "buf-guard"))]
 #[used]
 pub static mut GUARD_HI: usize = 0;
 /// 粘性证据：被拒绝的写入次数 / 最近一次的缓冲地址 / 最近一次的**调用者返回地址** ✓
-#[cfg(target_arch = "arm")]
+#[cfg(all(target_arch = "arm", feature = "buf-guard"))]
 pub static BAD_BUF_COUNT: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(0);
-#[cfg(target_arch = "arm")]
+#[cfg(all(target_arch = "arm", feature = "buf-guard"))]
 pub static BAD_BUF_ADDR: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(0);
-#[cfg(target_arch = "arm")]
+#[cfg(all(target_arch = "arm", feature = "buf-guard"))]
 pub static BAD_BUF_LR: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(0);
 
 pub fn encode(msgid: u32, seq: u8, payload: &[u8], out: &mut [u8; MAX_FRAME_LEN]) -> usize {
     // ★§5.220：入口处读 SP/LR（此处 LR 仍是**调用者返回地址** ✓，与非叶子处不同 ✓）
-    #[cfg(target_arch = "arm")]
+    #[cfg(all(target_arch = "arm", feature = "buf-guard"))]
     {
         let sp: usize;
         let lr: usize;

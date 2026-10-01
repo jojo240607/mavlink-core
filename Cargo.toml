@@ -13,6 +13,7 @@ license = "MIT OR Apache-2.0"
 # 刻意保持零依赖：全部字节编解码、位域均手写，保证 no_std 裸机可编译。
 
 [features]
+buf-guard = []
 default = []
 # 地面站兼容层（与官方 `mavlink` crate 命名对齐的 `MavHeader`/`MavMessage`/`*_DATA`）。
 # 该层使用 alloc（Vec/String），仅 host 侧地面站/调试工具需要；
