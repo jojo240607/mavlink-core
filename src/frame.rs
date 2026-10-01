@@ -158,7 +158,51 @@ pub fn crc16_x25(mut crc: u16, bytes: &[u8]) -> u16 {
 /// `seq` 由调用方维护（跨帧递增）。`payload` 长度必须 ≤ 255。
 /// 头部布局：`len(1) incompat(1) compat(1) seq(1) sys(1) comp(1) msgid(3 LE)`。
 /// 与标准地面站字节级兼容：`crc = CRC16_X25(CRC16_X25(0xFFFF, header+payload), CRC_EXTRA[msgid])`。
+// ★★§5.220【悬垂输出缓冲守卫 ✓】输出缓冲若落在**当前 SP 之下**，就指向"已返回帧的死区" ✗
+//   —— 那是 §5.219 抓到的真实故障：写它会踩掉该区域的**返回地址** ⇒ 之后 `pop {pc}` 野跳转 ✓
+//   判据 ✓：地址落在【调用方声明的栈竞技场 `[GUARD_LO, GUARD_HI)`】内、且 `< SP` ⇒ 必是死区 ✓
+//   （只按 `< SP` 判会**误伤静态/`.bss` 缓冲** ✗ —— 它们天生在栈下方 ✓；故需显式竞技场范围 ✓）
+//   行为 ✓：**拒绝写入**（返回 0 ✓）—— 帧缺失远好于踩碎返回地址 ✓；并记录粘性证据 ✓。
+#[cfg(target_arch = "arm")]
+#[used]
+pub static mut GUARD_LO: usize = 0;
+/// 栈竞技场上界（不含）；`LO == HI == 0` ⇒ 关闭守卫 ✓（host 侧无需设置 ✓）
+#[cfg(target_arch = "arm")]
+#[used]
+pub static mut GUARD_HI: usize = 0;
+/// 粘性证据：被拒绝的写入次数 / 最近一次的缓冲地址 / 最近一次的**调用者返回地址** ✓
+#[cfg(target_arch = "arm")]
+pub static BAD_BUF_COUNT: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(0);
+#[cfg(target_arch = "arm")]
+pub static BAD_BUF_ADDR: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(0);
+#[cfg(target_arch = "arm")]
+pub static BAD_BUF_LR: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(0);
+
 pub fn encode(msgid: u32, seq: u8, payload: &[u8], out: &mut [u8; MAX_FRAME_LEN]) -> usize {
+    // ★§5.220：入口处读 SP/LR（此处 LR 仍是**调用者返回地址** ✓，与非叶子处不同 ✓）
+    #[cfg(target_arch = "arm")]
+    {
+        let sp: usize;
+        let lr: usize;
+        unsafe {
+            core::arch::asm!(
+                "mov {0}, sp",
+                "mov {1}, lr",
+                out(reg) sp,
+                out(reg) lr,
+                options(nomem, nostack, preserves_flags)
+            );
+        }
+        let base = out.as_ptr() as usize;
+        let (lo, hi) = unsafe { (GUARD_LO, GUARD_HI) };
+        if lo != hi && base >= lo && base < hi && base < sp {
+            use core::sync::atomic::Ordering;
+            BAD_BUF_COUNT.fetch_add(1, Ordering::Relaxed);
+            BAD_BUF_ADDR.store(base as u32, Ordering::Relaxed);
+            BAD_BUF_LR.store(lr as u32, Ordering::Relaxed);
+            return 0;
+        }
+    }
     let plen = payload.len().min(255);
     // 直接写入 out，避免额外 280 字节中转缓冲（栈敏感场景）。
     out[0] = MAVLINK_MAGIC;
