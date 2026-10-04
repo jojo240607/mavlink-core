@@ -95,6 +95,8 @@ pub mod msg_id {
     // HIL 设定点 / 执行器回传（标准 common.xml）
     pub const SET_POSITION_TARGET_LOCAL_NED: u32 = 84;
     pub const HIL_ACTUATOR_CONTROLS: u32 = 93;
+    // ★design.md §9：可观测性 —— 命名浮点（地面站/NSH 可读的键值诊断对）
+    pub const NAMED_VALUE_FLOAT: u32 = 251;
 }
 
 /// 标准 MAVLink common.xml 的 CRC_EXTRA 值（按 msg_id 索引；无则为 0）。
@@ -116,6 +118,7 @@ pub const CRC_EXTRA: [u8; 301] = {
     t[msg_id::GLOBAL_POSITION_INT as usize] = 104; // 标准 common.xml CRC_EXTRA
     t[msg_id::LOCAL_POSITION_NED as usize] = 185; // 标准 common.xml CRC_EXTRA (v2.0)
     t[msg_id::VFR_HUD as usize] = 20; // 标准 common.xml CRC_EXTRA
+    t[msg_id::NAMED_VALUE_FLOAT as usize] = 170; // 标准 common.xml CRC_EXTRA（NAMED_VALUE_FLOAT=251）
     t[msg_id::COMMAND_LONG as usize] = 152;
     t[msg_id::COMMAND_ACK as usize] = 143; // 标准 common.xml CRC_EXTRA
     t[msg_id::MISSION_REQUEST_LIST as usize] = 132;

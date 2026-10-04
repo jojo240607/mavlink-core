@@ -284,6 +284,25 @@ pub fn encode_attitude_raw(
     encode(msg_id::ATTITUDE, seq, &pl, out)
 }
 
+/// ★design.md §9：**NAMED_VALUE_FLOAT**（id 251）—— 一条「名称 + 浮点值」诊断对。
+/// 标准布局（18B，按 MAVLink 字段排序：u32 time_boot_ms, f32 value, char[10] name）。
+/// 用途：把 L1/L2/L3 的可观测量（执行时间、周期抖动、队列利用、CPU 负载…）以**地面站
+/// 或 NSH 可直接查看**的形式下发 ✓（§9「可通过 NSH 命令或 MAVLink 实时查看」✓）。
+pub fn encode_named_value_float_raw(
+    time_boot_ms: u32,
+    value: f32,
+    name: &[u8],
+    seq: u8,
+    out: &mut [u8; MAX_FRAME_LEN],
+) -> usize {
+    let mut pl = [0u8; 18];
+    put_i32(&mut pl, 0, time_boot_ms as i32); // 位布局等同 u32 ✓（MAVLink 字段类型只影响 CRC ✓）
+    put_f32(&mut pl, 4, value);
+    let n = name.len().min(10);
+    pl[8..8 + n].copy_from_slice(&name[..n]);
+    encode(msg_id::NAMED_VALUE_FLOAT, seq, &pl, out)
+}
+
 /// LOCAL_POSITION_NED：NED 位置 + 速度（m, m/s）。标准布局（28B）。
 pub fn encode_local_pos_raw(
     time_boot_ms: i32,
